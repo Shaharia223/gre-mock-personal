@@ -1,7 +1,8 @@
 /* GRE Mock Lab — static single-page app. Data: window.DATA_TC / DATA_RC / DATA_QUANT */
 (function(){
 'use strict';
-const TC = window.DATA_TC || [], RC = window.DATA_RC || [], QT = window.DATA_QUANT || [];
+const TC = window.DATA_TC || [], RC = window.DATA_RC || [], QTALL = window.DATA_QUANT || [];
+const QT = QTALL.filter(q => !q.hide); /* hide = retired question, kept only so old results still open */
 const $app = document.getElementById('app');
 const L = i => String.fromCharCode(65+i);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -19,7 +20,7 @@ const store = {
 const TCmap = {}; TC.forEach(q => TCmap[q.id]=q);
 const RCq = {}; const RCmap = {};
 RC.forEach(p => { RCmap[p.id]=p; p.q.forEach((q,i) => RCq[q.id] = {q, p, i}); p.words = p.p.join(' ').split(/\s+/).length; });
-const QTmap = {}; QT.forEach(q => QTmap[q.id]=q);
+const QTmap = {}; QTALL.forEach(q => QTmap[q.id]=q);
 const WRITING_PROMPTS = [
   {i:'Discuss how far you agree or disagree with the statement, and explain your reasoning. Consider ways the statement might or might not hold true, and how those cases shape your position.', p:'Governments should put more funding into preserving the natural environment than into preserving historic buildings.'},
   {i:'Discuss how far you agree or disagree with the statement, and explain your reasoning. Consider ways the statement might or might not hold true, and how those cases shape your position.', p:'The best way to understand a society is to study the people it considers its heroes.'},
@@ -277,7 +278,7 @@ function endSection(){
     let level='mid';
     if(SPEC[nextCode].stage===2){
       const first = T.sections.find(x=>SPEC[x.code].measure===SPEC[nextCode].measure && SPEC[x.code].stage===1);
-      level = first && first.correct >= 7 ? 'hard' : 'easy';
+      level = secondSectionLevel(SPEC[nextCode].measure, first ? first.correct : 0);
     }
     T.sections.push(makeSection(nextCode, level));
     T.cur++; T.idx=0; T.view='break'; saveT(); renderTest(); return;
@@ -300,10 +301,45 @@ function finishTest(){
   store.del('current');
   location.hash='#result/'+T.id;
 }
-function estScore(c1,n1,c2,n2,level){
-  const p=(c1+c2)/(n1+n2);
-  if(level==='hard') return Math.round(150 + 20*Math.pow(p,1.15));
-  return Math.min(158, Math.round(130 + 30*p));
+const SCORE_TABLES = {
+  Quant: [
+    [130,130,130,131,134,136,138,139,141,142,143,144,145,146,147,148],
+    [130,130,131,134,136,138,139,141,142,143,144,145,146,147,148,149],
+    [130,131,134,136,138,139,141,142,143,144,145,146,147,148,149,150],
+    [131,134,136,138,139,141,142,143,144,145,146,147,148,149,150,151],
+    [136,138,140,141,143,144,145,146,147,148,149,150,151,152,153,154],
+    [138,140,141,143,144,145,146,147,148,149,150,151,152,153,154,156],
+    [140,141,143,144,145,146,147,148,149,150,151,152,153,154,156,157],
+    [141,143,144,145,146,147,148,149,150,151,152,153,154,156,157,158],
+    [146,147,148,149,150,151,152,153,154,155,156,157,158,160,161,162],
+    [147,148,149,150,151,152,153,154,155,156,157,158,160,161,162,164],
+    [148,149,150,151,152,153,154,155,156,157,158,160,161,162,164,166],
+    [149,150,151,152,153,154,155,156,157,158,160,161,162,164,166,168],
+    [150,151,152,153,154,155,156,157,158,160,161,162,164,166,168,170]
+  ],
+  Verbal: [
+    [130,130,130,131,134,136,138,140,142,143,145,146,147,148,150,151],
+    [130,130,131,134,136,138,140,142,143,145,146,147,148,150,151,152],
+    [130,131,134,136,138,140,142,143,145,146,147,148,150,151,152,153],
+    [131,134,136,138,140,142,143,145,146,147,148,150,151,152,153,154],
+    [134,136,138,140,142,143,145,146,147,148,150,151,152,153,154,155],
+    [141,143,144,146,147,149,150,151,152,153,154,155,156,157,159,160],
+    [143,144,146,147,149,150,151,153,153,154,155,156,157,159,160,161],
+    [144,146,147,149,150,151,153,153,154,155,156,157,159,160,161,162],
+    [146,147,149,150,151,153,153,154,155,156,157,159,160,161,162,164],
+    [149,150,152,153,154,155,156,157,158,160,161,162,163,165,166,168],
+    [150,152,153,154,155,156,157,158,160,161,162,163,165,166,168,169],
+    [152,153,154,155,156,157,158,160,161,162,163,165,166,168,169,170],
+    [153,154,155,156,157,158,160,161,162,163,165,166,168,169,170,170]
+  ]
+};
+function secondSectionLevel(measure, correct){
+  if(measure==='Quant') return correct >= 8 ? 'hard' : correct >= 4 ? 'mid' : 'easy';
+  return correct >= 9 ? 'hard' : correct >= 5 ? 'mid' : 'easy';
+}
+function estScore(c1,c2,measure){
+  const table=SCORE_TABLES[measure];
+  return table[Math.max(0,Math.min(12,c1))][Math.max(0,Math.min(15,c2))];
 }
 function summarize(t){
   const scores={}, raw={all:0}; let total=0;
@@ -311,7 +347,7 @@ function summarize(t){
     const ss=t.sections.filter(s=>s.measure===m && s.code!=='S');
     if(ss.length===2){
       const c=ss.map(s=>s.items.filter(it=>isCorrect(it,s.resp[it.k+':'+it.id])).length);
-      scores[m]=estScore(c[0],ss[0].items.length,c[1],ss[1].items.length,ss[1].level);
+      scores[m]=estScore(c[0],c[1],m);
     }
   });
   t.sections.forEach(s=>{ const c=s.items.filter(it=>isCorrect(it,s.resp[it.k+':'+it.id])).length; raw[s.code]=c; raw.all+=c; total+=s.items.length; });
@@ -640,9 +676,9 @@ function renderResult(id){
     <h2 style="margin-top:12px">${esc(h.title)}</h2><div class="muted small">${new Date(h.date).toLocaleString()}</div>
     <div class="score">${sc.map(([m,v])=>`<div class="card"><div class="muted small">${m} (estimated)</div><div class="big">${v}</div><div class="small muted">scale 130–170</div></div>`).join('')}
       <div class="card"><div class="muted small">Raw score</div><div class="big">${h.raw.all}/${h.total}</div><div class="small muted">${Math.round(100*h.raw.all/Math.max(1,h.total))}% correct</div></div></div>
-    ${sc.length?'<p class="small muted">Scaled scores are a rough estimate from your raw score and which second-section difficulty you reached. They are not official ETS conversions.</p>':''}
+    ${sc.length?'<p class="small muted">Scaled scores use the practice lookup tables shown for the Quant and Verbal section results. They are not official ETS conversions.</p>':''}
     <h2>By question type</h2><div class="bars">${Object.entries(byType).map(([t,v])=>`<div class="brow"><span>${esc(t)}</span><div class="btrack"><div class="bfill" style="width:${100*v.c/v.n}%"></div></div><span class="small">${v.c}/${v.n}</span></div>`).join('')}</div>
-    ${secs.map(s=>`<h2>${esc(s.name)} <span class="tag">${s.code!=='S'&&SPEC[s.code].stage===2?(s.level==='hard'?'harder':'easier')+' section':''}</span></h2>
+    ${secs.map(s=>`<h2>${esc(s.name)} <span class="tag">${s.code!=='S'&&SPEC[s.code].stage===2?(s.level==='hard'?'harder':s.level==='mid'?'medium':'easier')+' section':''}</span></h2>
       ${s.items.map((it,i)=>{ const r=s.resp[rkey(it)]; const ok=isCorrect(it,r); const info=itemInfo(it); const a=answered(it,r);
         return `<details class="qrow" data-sec="${esc(s.code)}" data-i="${i}"><summary><span class="dot ${ok?'ok':a?'no':'sk'}"></span><b>Q${i+1}</b> <span class="tag">${esc(info.type)}</span>
           <span class="small muted" style="margin-left:auto">${ok?'Correct':a?'Incorrect':'Skipped'}</span></summary><div class="body"></div></details>`; }).join('')}`).join('')}
@@ -785,7 +821,7 @@ function tabDrill(c){
   };
 }
 function tabMist(c){
-  const mist=Object.values(store.get('mistakes',{})).filter(m=>!m.right && (m.k==='tc'?TCmap[m.id]:m.k==='rc'?RCq[m.id]:QTmap[m.id])).sort((a,b)=>b.t-a.t);
+  const mist=Object.values(store.get('mistakes',{})).filter(m=>!m.right && (m.k==='tc'?TCmap[m.id]:m.k==='rc'?RCq[m.id]:(QTmap[m.id]&&!QTmap[m.id].hide))).sort((a,b)=>b.t-a.t);
   if(!mist.length){ c.innerHTML='<p class="muted">No mistakes recorded yet. Questions you get wrong in tests and drills show up here so you can redo them. Once you answer one correctly, it drops off the list.</p>'; return; }
   const cnt={Verbal:0,Quant:0}; mist.forEach(m=>cnt[m.k==='qt'?'Quant':'Verbal']++);
   c.innerHTML=`<p>${mist.length} questions to revisit (${cnt.Verbal} Verbal, ${cnt.Quant} Quant).</p>

@@ -4,7 +4,7 @@ A static GRE practice and mock-test web app built from the KMF question bank:
 
 - 1,499 Text Completion / Sentence Equivalence questions (most of the 1,300 KMF originals include translated explanations)
 - 347 RC passages with 770 questions (passages 1–300 include explanations)
-- 911 Quant questions (KMF Math Sprint, Special Exercises by test point, Latest 170 puzzles), shown as images
+- 901 Quant questions (KMF Math Sprint, Special Exercises by test point, Latest 170 puzzles), shown as clean images taken from the KMF question-bank PDF
 - Timed Analytical Writing practice with 42 original Issue-style prompts; essays can be copied for marking elsewhere
 
 It runs entirely in the browser with no backend. Your progress is saved in your browser's localStorage.
