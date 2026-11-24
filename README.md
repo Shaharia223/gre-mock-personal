@@ -25,5 +25,6 @@ The site is about 14 MB.
 ## Notes
 - `robots.txt` and a `noindex` meta tag keep search engines from listing the site. Anyone with the link can still open it.
 - Scaled scores (130–170) are rough estimates, not official ETS conversions.
+- The mock tab shows a separate Verbal and Quant estimate based on the average of your saved mock scores. It updates as you complete mocks; it is only a rough guide, not a guaranteed or official prediction.
 - Writing practice is timed for 30 minutes and intentionally has no built-in grading. Finish a response to copy it for external feedback.
 - Use **History → Export my data** to move your progress to another browser or device.

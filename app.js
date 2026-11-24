@@ -730,8 +730,29 @@ function renderHome(){
 function guardStart(fn){
   return ()=>{ if(store.get('current',null) && !confirm('Starting a new test will discard your unfinished one. Continue?')) return; store.del('current'); location.hash='#test'; fn(); };
 }
+function scoreForecast(history, measure){
+  const scores=history.map(h=>h.scores&&h.scores[measure]).filter(v=>typeof v==='number'&&Number.isFinite(v));
+  if(!scores.length) return null;
+  return {
+    score:Math.round(scores.reduce((sum,v)=>sum+v,0)/scores.length),
+    count:scores.length,
+    min:Math.min(...scores),
+    max:Math.max(...scores)
+  };
+}
+function forecastCard(history, measure){
+  const forecast=scoreForecast(history,measure);
+  if(!forecast) return `<div class="card"><h3>${measure} estimate</h3><p>Complete a scored mock to see an estimate.</p></div>`;
+  return `<div class="card"><h3>${measure} estimate</h3><div class="big">${forecast.score}</div>
+    <div class="small muted">Average of ${forecast.count} saved mock ${forecast.count===1?'score':'scores'} (130–170 scale)</div>
+    ${forecast.count>1?`<div class="small muted">Past estimates: ${forecast.min}–${forecast.max}</div>`:''}</div>`;
+}
 function tabMock(c){
-  c.innerHTML=`<div class="grid">
+  const hist=store.get('history',[]);
+  c.innerHTML=`<h2>Your mock-based score estimate</h2>
+  <p class="small muted">An average of your saved mock estimates, not an official score prediction.</p>
+  <div class="forecast">${['Verbal','Quant'].map(m=>forecastCard(hist,m)).join('')}</div>
+  <div class="grid">
     <div class="card"><h3>Full GRE mock</h3><p>4 sections in the current shorter GRE format: Verbal 12 Q / 18 min + 15 Q / 23 min, Quant 12 Q / 21 min + 15 Q / 26 min. The second section of each measure adapts to your first. About 1 h 30 min.</p><button class="btn" id="m-full">Start full mock</button></div>
     <div class="card"><h3>Verbal-only mock</h3><p>Two adaptive Verbal sections (27 questions, 41 minutes) with TC, SE and RC in test proportions.</p><button class="btn" id="m-v">Start Verbal mock</button></div>
     <div class="card"><h3>Quant-only mock</h3><p>Two adaptive Quant sections (27 questions, 47 minutes) with an on-screen calculator.</p><button class="btn" id="m-q">Start Quant mock</button></div>
